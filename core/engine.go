@@ -402,9 +402,10 @@ type Engine struct {
 	bannedMu    sync.RWMutex
 
 	disabledCmds map[string]bool
+	adminCmds    map[string]bool  // extra commands promoted to admin-only via admin_commands config
 	adminFrom    string           // comma-separated user IDs for privileged commands; "*" = all allowed users; "" = deny
 	userRoles    *UserRoleManager // nil = legacy mode (no per-user policies)
-	userRolesMu  sync.RWMutex     // protects userRoles, disabledCmds, and adminFrom
+	userRolesMu  sync.RWMutex     // protects userRoles, disabledCmds, adminCmds, and adminFrom
 
 	rateLimiter         *RateLimiter
 	outgoingRL          *OutgoingRateLimiter
@@ -1236,6 +1237,42 @@ func (e *Engine) SetDisabledCommands(cmds []string) {
 	e.userRolesMu.Lock()
 	defer e.userRolesMu.Unlock()
 	e.disabledCmds = resolveDisabledCmds(cmds)
+}
+
+// GetAdminCommands returns the command IDs promoted to admin-only via
+// admin_commands (in addition to the built-in privileged commands).
+func (e *Engine) GetAdminCommands() []string {
+	e.userRolesMu.RLock()
+	defer e.userRolesMu.RUnlock()
+	out := make([]string, 0, len(e.adminCmds))
+	for k := range e.adminCmds {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// SetAdminCommands promotes the given commands to admin-only. Names are
+// resolved like disabled_commands (prefix match against built-ins, "*" for
+// all built-ins; unknown names are kept so custom commands and skills can be
+// gated too). The list is additive: built-in privileged commands stay gated
+// regardless of its content.
+func (e *Engine) SetAdminCommands(cmds []string) {
+	e.userRolesMu.Lock()
+	defer e.userRolesMu.Unlock()
+	e.adminCmds = resolveDisabledCmds(cmds)
+}
+
+// requiresAdmin reports whether invoking cmdName with args needs admin_from
+// authorization, either because it is a built-in privileged command or
+// because it was promoted via admin_commands.
+func (e *Engine) requiresAdmin(cmdName string, args []string) bool {
+	if isPrivilegedCommandInvocation(cmdName, args) {
+		return true
+	}
+	e.userRolesMu.RLock()
+	defer e.userRolesMu.RUnlock()
+	return e.adminCmds[strings.ToLower(cmdName)]
 }
 
 // SetUserRoles configures per-user role-based policies. Pass nil to disable.
@@ -6964,7 +7001,7 @@ func (e *Engine) handleCommand(p Platform, msg *Message, raw string) bool {
 		return true
 	}
 
-	if cmdID != "" && isPrivilegedCommandInvocation(cmdID, args) && !e.isAdmin(msg.UserID) {
+	if cmdID != "" && e.requiresAdmin(cmdID, args) && !e.isAdmin(msg.UserID) {
 		slog.Info("audit: command_blocked",
 			"user_id", msg.UserID, "platform", msg.Platform,
 			"project", e.name, "command", cmdID, "reason", "unauthorized")
@@ -7081,6 +7118,13 @@ func (e *Engine) handleCommand(p Platform, msg *Message, raw string) bool {
 				e.reply(p, msg.ReplyCtx, fmt.Sprintf(e.i18n.T(MsgCommandDisabled), "/"+custom.Name))
 				return true
 			}
+			if e.requiresAdmin(custom.Name, nil) && !e.isAdmin(msg.UserID) {
+				slog.Info("audit: command_blocked",
+					"user_id", msg.UserID, "platform", msg.Platform,
+					"project", e.name, "command", custom.Name, "reason", "unauthorized")
+				e.reply(p, msg.ReplyCtx, fmt.Sprintf(e.i18n.T(MsgAdminRequired), "/"+custom.Name))
+				return true
+			}
 			slog.Info("audit: command_executed",
 				"user_id", msg.UserID, "platform", msg.Platform,
 				"project", e.name, "command", custom.Name, "type", "custom")
@@ -7098,6 +7142,13 @@ func (e *Engine) handleCommand(p Platform, msg *Message, raw string) bool {
 					"user_id", msg.UserID, "platform", msg.Platform,
 					"project", e.name, "command", skill.Name, "reason", "disabled")
 				e.reply(p, msg.ReplyCtx, fmt.Sprintf(e.i18n.T(MsgCommandDisabled), "/"+skill.Name))
+				return true
+			}
+			if e.requiresAdmin(skill.Name, nil) && !e.isAdmin(msg.UserID) {
+				slog.Info("audit: command_blocked",
+					"user_id", msg.UserID, "platform", msg.Platform,
+					"project", e.name, "command", skill.Name, "reason", "unauthorized")
+				e.reply(p, msg.ReplyCtx, fmt.Sprintf(e.i18n.T(MsgAdminRequired), "/"+skill.Name))
 				return true
 			}
 			slog.Info("audit: command_executed",

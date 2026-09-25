@@ -536,6 +536,7 @@ type ProjectConfig struct {
 	InjectSender     *bool        `toml:"inject_sender,omitempty"`     // prepend sender identity (platform + user ID) to each message sent to the agent
 	DisabledCommands []string     `toml:"disabled_commands,omitempty"` // commands to disable for this project (e.g. ["restart", "upgrade"])
 	AdminFrom        string       `toml:"admin_from,omitempty"`        // comma-separated user IDs allowed to run privileged commands; "*" = all allowed users
+	AdminCommands    []string     `toml:"admin_commands,omitempty"`    // extra commands promoted to admin-only (gated by admin_from), e.g. ["mode", "model"]
 	Users            *UsersConfig `toml:"users,omitempty"`             // per-user role config; nil = legacy behavior
 	// WorkspaceIdleTimeoutMinsLegacy is the deprecated per-project form of
 	// the workspace idle reaper timeout. New configs should set the top-level
@@ -3419,6 +3420,7 @@ func extractLineComment(line string) string {
 type ProjectSettingsUpdate struct {
 	Language             *string
 	AdminFrom            *string
+	AdminCommands        []string
 	DisabledCommands     []string
 	WorkDir              *string
 	Mode                 *string
@@ -3499,6 +3501,9 @@ func SaveProjectSettings(projectName string, update ProjectSettingsUpdate) error
 		}
 		if update.DisabledCommands != nil {
 			proj.DisabledCommands = update.DisabledCommands
+		}
+		if update.AdminCommands != nil {
+			proj.AdminCommands = update.AdminCommands
 		}
 		if update.ShowContextIndicator != nil {
 			v := *update.ShowContextIndicator

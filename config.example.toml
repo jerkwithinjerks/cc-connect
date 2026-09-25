@@ -762,6 +762,9 @@ name = "my-backend"
 #                                   # 隐藏 footer 第二行：工作区目录（默认 true 显示）
 # disabled_commands = ["restart", "upgrade", "cron"]  # Disable specific commands for this project
 #                                                     # 禁用该项目的指定命令
+# admin_commands = ["mode", "model"]  # Promote extra commands to admin-only (gated by admin_from).
+#                                     # Additive: /shell /show /dir /restart /upgrade /web /diff always stay admin-only.
+#                                     # 将额外命令提升为仅管理员可用（由 admin_from 授权）；内置特权命令始终受限
 #
 # filter_external_sessions: when true, /list /switch /delete only show sessions
 # created by cc-connect, hiding sessions from direct CLI usage in the same work_dir.
