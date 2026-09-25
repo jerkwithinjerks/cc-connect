@@ -423,6 +423,7 @@ Updates project settings. Only provided fields are updated.
 | `admin_from`        | string   | Comma-separated user IDs for privileged commands; `"*"` = all |
 | `language`          | string   | UI language: `en`, `zh`, `zh-TW`, `ja`, `es`             |
 | `disabled_commands` | string[] | Commands to disable (e.g. `restart`, `upgrade`, `cron`)  |
+| `admin_commands`    | string[] | Extra commands promoted to admin-only (e.g. `mode`, `model`); additive to built-in privileged commands |
 
 **Response:**
 
