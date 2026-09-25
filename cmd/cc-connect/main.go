@@ -541,6 +541,9 @@ func main() {
 			engine.SetDisabledCommands(proj.DisabledCommands)
 		}
 
+		// Wire extra admin-only commands
+		engine.SetAdminCommands(proj.AdminCommands)
+
 		// Wire admin allowlist for privileged commands
 		engine.SetAdminFrom(proj.AdminFrom)
 
@@ -1176,6 +1179,7 @@ func main() {
 				Language:             u.Language,
 				AdminFrom:            u.AdminFrom,
 				DisabledCommands:     u.DisabledCommands,
+				AdminCommands:        u.AdminCommands,
 				WorkDir:              u.WorkDir,
 				Mode:                 u.Mode,
 				AgentType:            u.AgentType,
@@ -1887,6 +1891,9 @@ func reloadConfig(configPath, projName string, engine *core.Engine) (*core.Confi
 
 	// Reload disabled commands
 	engine.SetDisabledCommands(proj.DisabledCommands)
+
+	// Reload extra admin-only commands
+	engine.SetAdminCommands(proj.AdminCommands)
 
 	// Reload admin allowlist
 	engine.SetAdminFrom(proj.AdminFrom)

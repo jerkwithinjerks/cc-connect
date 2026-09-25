@@ -22,6 +22,7 @@ import (
 type ProjectSettingsUpdate struct {
 	Language             *string
 	AdminFrom            *string
+	AdminCommands        []string
 	DisabledCommands     []string
 	WorkDir              *string
 	Mode                 *string
@@ -717,6 +718,7 @@ func (m *ManagementServer) handleProjectDetail(w http.ResponseWriter, r *http.Re
 			"language":          string(e.i18n.CurrentLang()),
 			"admin_from":        adminFrom,
 			"disabled_commands": e.GetDisabledCommands(),
+			"admin_commands":    e.GetAdminCommands(),
 		}
 
 		var workDir string
@@ -747,6 +749,7 @@ func (m *ManagementServer) handleProjectDetail(w http.ResponseWriter, r *http.Re
 			Language             *string           `json:"language"`
 			AdminFrom            *string           `json:"admin_from"`
 			DisabledCommands     []string          `json:"disabled_commands"`
+			AdminCommands        []string          `json:"admin_commands"`
 			WorkDir              *string           `json:"work_dir"`
 			Mode                 *string           `json:"mode"`
 			AgentType            *string           `json:"agent_type"`
@@ -822,6 +825,9 @@ func (m *ManagementServer) handleProjectDetail(w http.ResponseWriter, r *http.Re
 		if body.DisabledCommands != nil {
 			e.SetDisabledCommands(body.DisabledCommands)
 		}
+		if body.AdminCommands != nil {
+			e.SetAdminCommands(body.AdminCommands)
+		}
 		if body.WorkDir != nil {
 			if switcher, ok := e.agent.(WorkDirSwitcher); ok {
 				switcher.SetWorkDir(*body.WorkDir)
@@ -870,6 +876,7 @@ func (m *ManagementServer) handleProjectDetail(w http.ResponseWriter, r *http.Re
 				Language:             body.Language,
 				AdminFrom:            body.AdminFrom,
 				DisabledCommands:     body.DisabledCommands,
+				AdminCommands:        body.AdminCommands,
 				WorkDir:              body.WorkDir,
 				Mode:                 body.Mode,
 				AgentType:            body.AgentType,
