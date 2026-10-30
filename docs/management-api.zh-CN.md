@@ -1134,6 +1134,9 @@ GET /api/v1/status?token=mgmt-secret
 - `feishu:ou_xxx:chat_yyy` — 飞书用户与会话
 - `slack:C01234:U05678` — Slack 频道与用户
 - `discord:123456789:987654321` — Discord 服务器与用户
+- `dingtalk:g:cidAbC123==:staff001` — 钉钉群（`g`；单聊为 `d`）、会话 ID 与发送者。开启 `share_session_in_channel = true` 时没有用户段：`dingtalk:g:cidAbC123==`
+
+其中 `<chat_id>` 段即 `/whoami` 显示的 Chat ID，也是 `[[projects.chats]]` 匹配的依据。
 
 多工作区模式下，格式可能包含工作区前缀：
 
