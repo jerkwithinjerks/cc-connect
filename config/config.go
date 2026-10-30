@@ -242,6 +242,17 @@ type OutgoingRateLimitPlatConfig struct {
 	Burst        *int     `toml:"burst"`
 }
 
+// ChatConfig pins agent defaults for one conversation. ChatID is the
+// "Chat ID" shown by /whoami (e.g. the DingTalk ConversationId); it matches
+// both per-user and shared session keys of that chat.
+type ChatConfig struct {
+	Platform        string `toml:"platform"`
+	ChatID          string `toml:"chat_id"`
+	Mode            string `toml:"mode,omitempty"`
+	Model           string `toml:"model,omitempty"`
+	ReasoningEffort string `toml:"reasoning_effort,omitempty"`
+}
+
 // UsersConfig controls per-user role assignments and policies within a project.
 type UsersConfig struct {
 	DefaultRole string                `toml:"default_role,omitempty"` // role for unmatched users; default "member"
@@ -537,6 +548,7 @@ type ProjectConfig struct {
 	DisabledCommands []string     `toml:"disabled_commands,omitempty"` // commands to disable for this project (e.g. ["restart", "upgrade"])
 	AdminFrom        string       `toml:"admin_from,omitempty"`        // comma-separated user IDs allowed to run privileged commands; "*" = all allowed users
 	AdminCommands    []string     `toml:"admin_commands,omitempty"`    // extra commands promoted to admin-only (gated by admin_from), e.g. ["mode", "model"]
+	Chats            []ChatConfig `toml:"chats,omitempty"`             // per-conversation agent defaults (mode/model/reasoning_effort)
 	Users            *UsersConfig `toml:"users,omitempty"`             // per-user role config; nil = legacy behavior
 	// WorkspaceIdleTimeoutMinsLegacy is the deprecated per-project form of
 	// the workspace idle reaper timeout. New configs should set the top-level
@@ -1134,6 +1146,9 @@ func (c *Config) validateInternal(permissive bool) error {
 		if err := validateUsersConfig(prefix, proj.Users); err != nil {
 			return err
 		}
+		if err := validateChatConfigs(prefix, proj.Chats); err != nil {
+			return err
+		}
 		if err := validateDisplayConfig(prefix+".display", proj.Display); err != nil {
 			return err
 		}
@@ -1228,6 +1243,28 @@ func validateReferenceConfig(prefix string, rc ReferenceConfig) error {
 }
 
 // validateUsersConfig checks the [projects.users] section for consistency.
+func validateChatConfigs(prefix string, chats []ChatConfig) error {
+	seen := make(map[string]int, len(chats))
+	for i, c := range chats {
+		p := fmt.Sprintf("%s.chats[%d]", prefix, i)
+		if strings.TrimSpace(c.Platform) == "" {
+			return fmt.Errorf("config: %s.platform is required", p)
+		}
+		if strings.TrimSpace(c.ChatID) == "" {
+			return fmt.Errorf("config: %s.chat_id is required", p)
+		}
+		if c.Mode == "" && c.Model == "" && c.ReasoningEffort == "" {
+			return fmt.Errorf("config: %s sets no override (want mode, model, or reasoning_effort)", p)
+		}
+		key := strings.ToLower(strings.TrimSpace(c.Platform)) + "\x00" + strings.TrimSpace(c.ChatID)
+		if prev, dup := seen[key]; dup {
+			return fmt.Errorf("config: %s duplicates %s.chats[%d] (platform %q, chat_id %q)", p, prefix, prev, c.Platform, c.ChatID)
+		}
+		seen[key] = i
+	}
+	return nil
+}
+
 func validateUsersConfig(prefix string, u *UsersConfig) error {
 	if u == nil {
 		return nil

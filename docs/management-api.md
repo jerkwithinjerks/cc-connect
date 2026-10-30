@@ -1162,6 +1162,9 @@ Examples:
 - `feishu:ou_xxx:chat_yyy` — Feishu user in chat
 - `slack:C01234:U05678` — Slack channel and user
 - `discord:123456789:987654321` — Discord guild and user
+- `dingtalk:g:cidAbC123==:staff001` — DingTalk group (`g`; `d` for direct chats), conversation ID, and sender. With `share_session_in_channel = true` the user segment is dropped: `dingtalk:g:cidAbC123==`
+
+The `<chat_id>` segment is what `/whoami` shows as "Chat ID" and what `[[projects.chats]]` matches on.
 
 For multi-workspace mode, the format may include a workspace prefix:
 

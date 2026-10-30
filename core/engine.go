@@ -407,6 +407,10 @@ type Engine struct {
 	userRoles    *UserRoleManager // nil = legacy mode (no per-user policies)
 	userRolesMu  sync.RWMutex     // protects userRoles, disabledCmds, adminCmds, and adminFrom
 
+	chatOverrides      map[string]SessionOverrides // chatOverrideKey(platform, chatID) → per-chat agent defaults
+	chatOverrideWarned map[string]bool             // chats already warned that the agent ignores overrides
+	chatOverridesMu    sync.RWMutex
+
 	rateLimiter         *RateLimiter
 	outgoingRL          *OutgoingRateLimiter
 	streamPreview       StreamPreviewCfg
@@ -4498,7 +4502,7 @@ func (e *Engine) getOrCreateInteractiveStateWith(sessionKey string, p Platform, 
 
 	isResume := startSessionID != ""
 	startAt := time.Now()
-	agentSession, err := agent.StartSession(e.ctx, startSessionID)
+	agentSession, err := e.startAgentSession(e.ctx, agent, p.Name(), ccKey, startSessionID)
 	startElapsed := time.Since(startAt)
 	if err != nil {
 		// If resume/continue failed, try a fresh session as fallback.
@@ -4511,7 +4515,7 @@ func (e *Engine) getOrCreateInteractiveStateWith(sessionKey string, p Platform, 
 			session.SetAgentSessionID("", agent.Name())
 			sessions.Save()
 			startAt = time.Now()
-			agentSession, err = agent.StartSession(e.ctx, "")
+			agentSession, err = e.startAgentSession(e.ctx, agent, p.Name(), ccKey, "")
 			startElapsed = time.Since(startAt)
 			if err == nil {
 				slog.Info("fresh session started after resume failure",
@@ -10393,6 +10397,7 @@ func sanitizeTelegramMenuCommand(cmd string) string {
 }
 
 func (e *Engine) cmdModel(p Platform, msg *Message, args []string) {
+	defer e.noteChatOverride(p, msg)
 	agent, sessions, interactiveKey, err := e.commandContext(p, msg)
 	if err != nil {
 		e.reply(p, msg.ReplyCtx, e.i18n.Tf(MsgWsResolutionError, err))
@@ -10699,6 +10704,7 @@ func (e *Engine) reasoningUsage(efforts []string) string {
 }
 
 func (e *Engine) cmdMode(p Platform, msg *Message, args []string) {
+	defer e.noteChatOverride(p, msg)
 	agent, _, _, err := e.commandContext(p, msg)
 	if err != nil {
 		e.reply(p, msg.ReplyCtx, e.i18n.Tf(MsgWsResolutionError, err))
@@ -16015,6 +16021,9 @@ func (e *Engine) formatWhoamiText(msg *Message) string {
 		sb.WriteString(fmt.Sprintf("Chat ID: `%s`\n", chatID))
 	}
 	sb.WriteString(fmt.Sprintf("Session Key: `%s`\n", msg.SessionKey))
+	if o, ok := e.chatOverrideFor(msg.Platform, msg.SessionKey); ok {
+		sb.WriteString(fmt.Sprintf("%s: %s\n", e.i18n.T(MsgWhoamiOverrides), formatSessionOverrides(o)))
+	}
 
 	sb.WriteString("\n")
 	sb.WriteString(e.i18n.T(MsgWhoamiUsage))
@@ -16040,6 +16049,9 @@ func (e *Engine) renderWhoamiCard(msg *Message) *Card {
 		body.WriteString(fmt.Sprintf("**Chat ID:**  `%s`\n", chatID))
 	}
 	body.WriteString(fmt.Sprintf("**Session Key:**  `%s`\n", msg.SessionKey))
+	if o, ok := e.chatOverrideFor(msg.Platform, msg.SessionKey); ok {
+		body.WriteString(fmt.Sprintf("**%s:**  %s\n", e.i18n.T(MsgWhoamiOverrides), formatSessionOverrides(o)))
+	}
 
 	return NewCard().
 		Title(e.i18n.T(MsgWhoamiCardTitle), "blue").

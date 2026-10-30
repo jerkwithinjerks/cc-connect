@@ -539,6 +539,31 @@ func validateSessionIDInProject(configHome, workDir, sessionID string) bool {
 
 // StartSession creates a persistent interactive Claude Code session.
 func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentSession, error) {
+	return a.startSession(ctx, sessionID, core.SessionOverrides{})
+}
+
+// StartSessionWithOptions starts a session whose mode, model, and reasoning
+// effort are overridden for this process only; the agent defaults are untouched.
+func (a *Agent) StartSessionWithOptions(ctx context.Context, sessionID string, o core.SessionOverrides) (core.AgentSession, error) {
+	return a.startSession(ctx, sessionID, o)
+}
+
+// applySessionOverrides returns the spawn-time mode, model, and effort after
+// applying non-empty per-session overrides.
+func applySessionOverrides(mode, model, effort string, o core.SessionOverrides) (string, string, string) {
+	if o.Mode != "" {
+		mode = normalizePermissionMode(o.Mode)
+	}
+	if o.Model != "" {
+		model = o.Model
+	}
+	if o.ReasoningEffort != "" {
+		effort = normalizeEffort(o.ReasoningEffort)
+	}
+	return mode, model, effort
+}
+
+func (a *Agent) startSession(ctx context.Context, sessionID string, o core.SessionOverrides) (core.AgentSession, error) {
 	a.mu.Lock()
 	tools := make([]string, len(a.allowedTools))
 	copy(tools, a.allowedTools)
@@ -562,6 +587,8 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 			model = m
 		}
 	}
+	// Per-session overrides win over both the agent defaults and the provider model.
+	mode, model, effort = applySessionOverrides(mode, model, effort, o)
 	slog.Debug("claudecode: StartSession provider state",
 		"activeIdx", activeIdx,
 		"activeProvider", activeProviderName,
