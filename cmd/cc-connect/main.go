@@ -544,6 +544,9 @@ func main() {
 		// Wire extra admin-only commands
 		engine.SetAdminCommands(proj.AdminCommands)
 
+		// Wire per-conversation agent defaults
+		engine.SetChatOverrides(buildChatOverrides(proj.Chats))
+
 		// Wire admin allowlist for privileged commands
 		engine.SetAdminFrom(proj.AdminFrom)
 
@@ -1928,6 +1931,9 @@ func reloadConfig(configPath, projName string, engine *core.Engine) (*core.Confi
 	// Reload extra admin-only commands
 	engine.SetAdminCommands(proj.AdminCommands)
 
+	// Reload per-conversation agent defaults
+	engine.SetChatOverrides(buildChatOverrides(proj.Chats))
+
 	// Reload admin allowlist
 	engine.SetAdminFrom(proj.AdminFrom)
 
@@ -1940,6 +1946,22 @@ func reloadConfig(configPath, projName string, engine *core.Engine) (*core.Confi
 
 	slog.Info("config reloaded", "project", projName)
 	return result, nil
+}
+
+func buildChatOverrides(chats []config.ChatConfig) []core.ChatOverride {
+	out := make([]core.ChatOverride, 0, len(chats))
+	for _, c := range chats {
+		out = append(out, core.ChatOverride{
+			Platform: c.Platform,
+			ChatID:   c.ChatID,
+			Overrides: core.SessionOverrides{
+				Mode:            c.Mode,
+				Model:           c.Model,
+				ReasoningEffort: c.ReasoningEffort,
+			},
+		})
+	}
+	return out
 }
 
 func buildUserRoleManager(uc *config.UsersConfig) *core.UserRoleManager {

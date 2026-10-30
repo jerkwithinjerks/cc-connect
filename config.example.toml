@@ -771,6 +771,20 @@ name = "my-backend"
 #                                     # Additive: /shell /show /dir /restart /upgrade /web /diff always stay admin-only.
 #                                     # 将额外命令提升为仅管理员可用（由 admin_from 授权）；内置特权命令始终受限
 #
+# Per-conversation agent defaults. chat_id is the "Chat ID" shown by /whoami
+# (e.g. the DingTalk ConversationId); one entry covers both per-user and shared
+# sessions of that chat. Applies when the chat's next agent process starts
+# (after /new, an idle reap, or a restart). Currently honored by claudecode;
+# other agents ignore it and log a warning.
+# 按会话固定 agent 默认值。chat_id 为 /whoami 显示的 Chat ID（如钉钉 ConversationId），
+# 对该会话的个人与共享 session 都生效；在该会话下一次启动 agent 进程时生效。目前仅 claudecode 支持。
+# [[projects.chats]]
+# platform = "dingtalk"
+# chat_id = "cidAbC123=="
+# mode = "plan"               # optional: default / acceptEdits / plan / auto / bypassPermissions / dontAsk
+# model = "haiku"             # optional
+# reasoning_effort = "low"    # optional: low / medium / high / max
+#
 # filter_external_sessions: when true, /list /switch /delete only show sessions
 # created by cc-connect, hiding sessions from direct CLI usage in the same work_dir.
 # Default false = show all sessions from the agent.

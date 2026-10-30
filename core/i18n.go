@@ -563,6 +563,9 @@ const (
 	MsgWhoamiName      MsgKey = "whoami_name"
 	MsgWhoamiPlatform  MsgKey = "whoami_platform"
 	MsgWhoamiUsage     MsgKey = "whoami_usage"
+	MsgWhoamiOverrides MsgKey = "whoami_overrides"
+
+	MsgChatOverridePinned MsgKey = "chat_override_pinned"
 
 	MsgRelayNoBinding     MsgKey = "relay_no_binding"
 	MsgRelayBound         MsgKey = "relay_bound"
@@ -3501,6 +3504,20 @@ var messages = map[MsgKey]map[Language]string{
 		LangTraditionalChinese: "平台",
 		LangJapanese:           "プラットフォーム",
 		LangSpanish:            "Plataforma",
+	},
+	MsgWhoamiOverrides: {
+		LangEnglish:            "Chat overrides",
+		LangChinese:            "会话覆盖设置",
+		LangTraditionalChinese: "會話覆寫設定",
+		LangJapanese:           "チャット個別設定",
+		LangSpanish:            "Ajustes del chat",
+	},
+	MsgChatOverridePinned: {
+		LangEnglish:            "ℹ️ This chat is pinned by config (%s). New agent sessions in this chat use these values regardless of the project setting.",
+		LangChinese:            "ℹ️ 本会话已在配置中固定（%s）。本会话新启动的 agent 会话始终使用这些值，不受项目设置影响。",
+		LangTraditionalChinese: "ℹ️ 本會話已在設定中固定（%s）。本會話新啟動的 agent 會話一律使用這些值，不受專案設定影響。",
+		LangJapanese:           "ℹ️ このチャットは設定で固定されています（%s）。このチャットで新しく開始する agent セッションは、プロジェクト設定に関係なくこの値を使います。",
+		LangSpanish:            "ℹ️ Este chat está fijado por la configuración (%s). Las nuevas sesiones del agente en este chat usan estos valores, sin importar la configuración del proyecto.",
 	},
 	MsgWhoamiUsage: {
 		LangEnglish:            "💡 Use the `User ID` above for `allow_from` and `admin_from` in your `config.toml`.",

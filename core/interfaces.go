@@ -463,6 +463,27 @@ type ReasoningEffortSwitcher interface {
 	AvailableReasoningEfforts() []string
 }
 
+// SessionOverrides carries per-session values that take precedence over the
+// agent-wide mode, model, and reasoning effort for one spawned process.
+// Empty fields mean "use the agent default".
+type SessionOverrides struct {
+	Mode            string
+	Model           string
+	ReasoningEffort string
+}
+
+// IsZero reports whether no override is set.
+func (o SessionOverrides) IsZero() bool {
+	return o.Mode == "" && o.Model == "" && o.ReasoningEffort == ""
+}
+
+// SessionOptionsStarter is an optional interface for agents that can start a
+// session with per-session overrides without mutating the shared agent.
+// Agents that don't implement it fall back to StartSession and ignore overrides.
+type SessionOptionsStarter interface {
+	StartSessionWithOptions(ctx context.Context, sessionID string, o SessionOverrides) (AgentSession, error)
+}
+
 // ModelOption describes a selectable model.
 type ModelOption struct {
 	Name  string // model identifier passed to CLI
